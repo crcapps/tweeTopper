@@ -24,10 +24,10 @@ var MongoClient = require('mongodb').MongoClient;
 var twitter = require('ntwitter'); 
 
 var twit = new twitter({
-	  consumer_key: '',
-	  consumer_secret: '',
-	  access_token_key: '',
-	  access_token_secret: ''
+	consumer_key: '',
+	consumer_secret: '',
+	access_token_key: '',
+	access_token_secret: ''
 	});
 
 var port = 3000;
@@ -111,6 +111,9 @@ MongoClient.connect('mongodb://localhost/tweeTopper', function (err, db) {
 										if (err) {
 											console.log('Error: ' + err);
 											}
+											// Also, we're going to just recalculate and send on every update from the stream.
+											// For statelessness sake.
+											// Making it known it's deliberate.
 											newData = collection.find({filterid:filterKey.toString()}).sort({retweets: -1}).limit(10);
 											var packet = [];
 											newData.toArray(function (err, array) {
@@ -128,11 +131,12 @@ MongoClient.connect('mongodb://localhost/tweeTopper', function (err, db) {
 												rank:i + 1
 												};
 												}
-												}										
-												if (array.length > 9) { // We just buffer until the client has a top 10.
+												}												// Let's not buffer so we can see the progress when there's no data in there already.
+												// Make sure client doesn't expect exactly 10.
+												//if (array.length > 9) { // We just buffer until the client has a top 10.
 												socket.emit('retweets', packet);
 												console.log('New data packet sent.');
-												}
+												//}
 										
 											});
 										});
