@@ -1,0 +1,19 @@
+{
+	"name" : "tweeTopper",
+	"version" : "1.0.0",
+	"author" : "Casey Ryan Capps <crcapps@gmail.com>",
+	"description" : "Hall Backend Project A",
+	"repository": {
+		"type" : "git",
+		"url" : "https://github.com/crcapps/twitterTopper.git"
+	},
+	"license" : "MIT",
+	"engines" : {
+		"node" : "latest"
+	},
+	"dependencies" : {
+		"mongodb" : "latest",
+		"ntwitter" : "latest",
+		"socket.io" : "latest"
+	}
+}
