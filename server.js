@@ -57,6 +57,26 @@ MongoClient.connect('mongodb://localhost/tweeTopper', function (err, db) {
 		var collection = db.collection('tweets');
 		io.sockets.on('connection', function(socket) {
 			console.log('Client connected.');
+			
+			socket.on('disconnect', function() {
+				console.log('Client disconnected.');
+			});
+			
+			socket.on('handle', function(handle) {
+				var theHandle = JSON.stringify(handle);
+				console.log('Handle (@username) requested: ' + theHandle);
+				twit.showUser(handle, function (err, json){
+					if (err) {
+						console.log('Error: ', err);
+						socket.emit({error: err});
+					} else {
+						var theId = json[0].id;
+						console.log('Id for ' + theHandle + ' found: ' + theId + ' sending to client.');
+						socket.emit({id: theId});
+					}
+				});
+			});
+			
 			socket.on('filter', function(aFilter) {
 				var theFilter = JSON.stringify(aFilter);
 				console.log('Filter received: ' + theFilter);
@@ -66,8 +86,8 @@ MongoClient.connect('mongodb://localhost/tweeTopper', function (err, db) {
 				var existingData = collection.find({filterid:filterKey.toString()}).sort({retweets: -1}).limit(10);
 				existingData.toArray(function (err, array) {
 					if (err) {
-						console.log('Error: ' + err);
-						}
+						console.log(err);
+						} else {
 					if (array.length > 0) {
 						console.log('Filter found: ' + theFilter[0] + ' (md5 hash: ' + filterKey + '). Retreiving Data');
 						var packet = [];
@@ -90,6 +110,7 @@ MongoClient.connect('mongodb://localhost/tweeTopper', function (err, db) {
 							console.log('Filter NOT found: ' + theFilter +' (md5 hash: ' + filterKey + '). Starting from Scratch.');
 						}
 						console.log('Starting the stream.');
+						try {
 						twit.stream('statuses/filter', aFilter, function(stream) {
 							stream.on('data', function(data) {
 								console.log('Got some data.');
@@ -109,8 +130,9 @@ MongoClient.connect('mongodb://localhost/tweeTopper', function (err, db) {
 									// We don't want to have multiple entries of the same tweet with different retweets.
 									collection.update({id: rt.id}, dataToPush, { upsert: true }, function(err) {
 										if (err) {
-											console.log('Error: ' + err);
+											console.log(err);
 											}
+											else {
 											// Also, we're going to just recalculate and send on every update from the stream.
 											// For statelessness sake.
 											// Making it known it's deliberate.
@@ -118,8 +140,7 @@ MongoClient.connect('mongodb://localhost/tweeTopper', function (err, db) {
 											var packet = [];
 											newData.toArray(function (err, array) {
 												if (err) {
-												console.log('Error: ' + err);
-												}
+												console.log(err);												} else {
 												for (var i = 0; i < array.length; i++) {
 												if (array[i] != null) {
 												packet[i] = {
@@ -137,14 +158,21 @@ MongoClient.connect('mongodb://localhost/tweeTopper', function (err, db) {
 												socket.emit('retweets', packet);
 												console.log('New data packet sent.');
 												//}
-										
-											});
-										});
-									}
-							});
-						});
-					});
-				});
-			});
-	}
-});
+												} //if (err) else
+											}); //newData.toArray(function (err, array)
+										} //if (err) else
+									}); //collection.update({id: rt.id}, dataToPush, { upsert: true }, function(err)
+									}  //if (Object.prototype.hasOwnProperty.call(data, "retweeted_status"))
+							}); //stream.on('data', function(data)
+						}); //twit.stream('statuses/filter', aFilter, function(stream)
+						} catch (err) {
+							console.log(err);
+							socket.emit({error: err});
+						}
+				}}); //existingData.toArray(function (err, array)
+				}); //socket.on('filter', function(aFilter)
+			}); //io.sockets.on('connection', function(socket)
+	} else {
+		console.log(err);
+	} 	//if (!err)
+}); //MongoClient.connect('mongodb://localhost/tweeTopper', function (err, db)

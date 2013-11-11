@@ -4,10 +4,17 @@
 <script src="/socket.io/socket.io.js"></script>
 <script>
   var socket = io.connect('http://localhost:3000');
-  socket.emit('filter', {track : 'twitter'});
+  socket.emit('filter', {porp : 'twitter'});
   socket.on('retweets', function (data) {
     console.log(data);
   });
+  socket.on('id', function (data) {
+	console.log(data);
+  });
+  socket.on('error', function(data){
+	console.log(data);
+  });
+  //socket.emit('handle', 'mashable');
 </script>
 </head>
 <body>
