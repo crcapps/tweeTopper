@@ -1,17 +1,28 @@
 var fs = require('fs'),
 	http = require('http'),
-	server = http.createServer(handler),
-	io = require('socket.io').listen(server);
+	server = http.createServer(handler);
+	
+	
+
 // Use MongoClient.  It's official now, and the old way is deprecated and slated for removal.
 // http://blog.mongodb.org/post/36666163412/introducing-mongoclient
 var MongoClient = require('mongodb').MongoClient;
+
+/*
+   Library: socket.io
+
+   Purpose: Web sockets client
+
+   Rationale: Proxies cross-browser, cross-device, firewall-agnostic access to a TCP data stream.
+*/
+io = require('socket.io').listen(server);
 
 /*
    Library: ntwitter
 
    Purpose: Twitter client
 
-   Rationale: Short Timeframe. 2 Days.  Not writing my own Twitter client. Working within scope of project limitations. Glue- right, Brett?
+   Rationale: Short Timeframe. ~2 Days.  Not writing my own Twitter client. Working within scope of project limitations. Glue- right, Brett?
    If I didn't know how to construct an HTTP POST and attach some auth headers I got after an OAuth session,
    then stuck the API call payload into the request body and then read the response status code, handling an error it if >200, then the response body,
    would we even be talking?  Probably not: I wouldn't have gotten this far in life if that wer the case.
@@ -28,7 +39,7 @@ var twit = new twitter({
 	consumer_secret: '',
 	access_token_key: '',
 	access_token_secret: ''
-	});
+});
 
 var port = 3000;
 
@@ -60,24 +71,31 @@ MongoClient.connect('mongodb://localhost/tweeTopper', function (err, db) {
 			
 			socket.on('disconnect', function() {
 				console.log('Client disconnected.');
+				if (twit.currentTwitStream != null) {
+					twit.currentTwitStream.destroy();
+				}
 			});
 			
 			socket.on('handle', function(handle) {
 				var theHandle = JSON.stringify(handle);
 				console.log('Handle (@username) requested: ' + theHandle);
-				twit.showUser(handle, function (err, json){
+				twit.showUser(handle, function (err, data){
 					if (err) {
 						console.log('Error: ', err);
-						socket.emit({error: err});
+						socket.emit('error', err);
 					} else {
-						var theId = json[0].id;
+						var theId = data[0].id;
 						console.log('Id for ' + theHandle + ' found: ' + theId + ' sending to client.');
-						socket.emit({id: theId});
+						socket.emit('id', theId);
 					}
 				});
 			});
 			
 			socket.on('filter', function(aFilter) {
+				if (twit.currentTwitStream != null) {
+					twit.currentTwitStream.destroy();
+				}
+				
 				var theFilter = JSON.stringify(aFilter);
 				console.log('Filter received: ' + theFilter);
 				// An md5 hash of the filter should serve nicely as an index.
@@ -95,9 +113,9 @@ MongoClient.connect('mongodb://localhost/tweeTopper', function (err, db) {
 						for (var i = 0; i < array.length; i++) {
 							if (array[i] != null) {
 								packet[i] = {
-									id: array[i].id,
+									//id: array[i].id,
 									text: array[i].text,
-									author: array[i].author,
+									//author: array[i].author,
 									handle: array[i].handle,
 									retweets: array[i].retweets,
 									rank:i + 1
@@ -113,6 +131,7 @@ MongoClient.connect('mongodb://localhost/tweeTopper', function (err, db) {
 						try {
 						twit.stream('statuses/filter', aFilter, function(stream) {
 							stream.on('data', function(data) {
+								twit.currentTwitStream = stream;
 								console.log('Got some data.');
 								// Do nothing unless tweet is a retweet.  Discard this data.
 								if (Object.prototype.hasOwnProperty.call(data, "retweeted_status")) {
@@ -144,9 +163,9 @@ MongoClient.connect('mongodb://localhost/tweeTopper', function (err, db) {
 												for (var i = 0; i < array.length; i++) {
 												if (array[i] != null) {
 												packet[i] = {
-												id: array[i].id,
+												//id: array[i].id,
 												text: array[i].text,
-												author: array[i].author,
+												//author: array[i].author,
 												handle: array[i].handle,
 												retweets: array[i].retweets,
 												rank:i + 1
@@ -167,7 +186,7 @@ MongoClient.connect('mongodb://localhost/tweeTopper', function (err, db) {
 						}); //twit.stream('statuses/filter', aFilter, function(stream)
 						} catch (err) {
 							console.log(err);
-							socket.emit({error: err});
+							socket.emit('error', err);
 						}
 				}}); //existingData.toArray(function (err, array)
 				}); //socket.on('filter', function(aFilter)

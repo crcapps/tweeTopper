@@ -1,23 +1,96 @@
+<!DOCTYPE html>
 <html>
-<head>
-<title>tweeTopper</title>
-<script src="/socket.io/socket.io.js"></script>
-<script>
-  var socket = io.connect('http://localhost:3000');
-  socket.emit('filter', {porp : 'twitter'});
-  socket.on('retweets', function (data) {
-    console.log(data);
-  });
-  socket.on('id', function (data) {
-	console.log(data);
-  });
-  socket.on('error', function(data){
-	console.log(data);
-  });
-  //socket.emit('handle', 'mashable');
-</script>
-</head>
-<body>
-<div id="text"></div>
-</body>
+	<head>
+		<title>tweeTopper</title>
+		<script src="/socket.io/socket.io.js"></script>
+		<style>
+			body {background-color:#000;font-family:sans-serif;}
+			div#wrap {width:100%;text-align:center;background-color:#000;}
+			div#main {margin-left:auto;margin-right:auto;margin-top:2%;margin-bottom:2%;padding:2%;width:75%;text-align:left;background-color:#FFF};
+			.hide {display:none};
+			.showBlock {display:block};
+			.showInline {display:inline};
+		</style>
+	</head>
+	<body>
+		<div id="wrap">
+			<div id="main">
+				<div id="header">
+				<h1>tweeTopper</h1>
+				<hr />
+				</div> <!-- #header -->
+				<div id="body">
+					<div id="controls">
+						<div id="handleSearch">
+							<span id="handleLabel">Search by handle: </span>
+							<span id="atSign">@</span>
+							<input type="text" id="handleField" />
+							<button id="handleButton">Search</button>
+						</div> <!-- #handleSearch -->
+						<div id="textSearch">
+							<span id="textLabel">Search by terms: </span>
+							<input type="text" id="textField" />
+							<button id="textButton">Search</button>
+						</div> <!-- #textSearch -->
+					</div> <!-- #controls -->
+					<hr />
+					<div id="textArea">
+						<div id="textHeader">
+							<span>Enter a search to continue.</span>
+						</div> <!-- #textHeader -->
+						<div id="tweetArea">
+						</div> <!-- #tweetArea -->
+					</div> <!-- #textArea -->
+				</div> <!-- #body -->
+				<div id="footer">
+					<hr />
+					<span id="githubLink"><a href="http://www.github.com/crcapps/tweeTopper">GitHub</a></span>
+				</div> <!-- #footer -->
+			</div> <!-- #main -->
+		</div> <!-- #wrap -->
+		<script>
+			var socket = io.connect('http://localhost:3000');
+			
+			var textHeader = document.querySelector('#textHeader');
+			var tweetArea = document.querySelector('#tweetArea');
+			var handleField = document.querySelector('#handleField');
+			var handleButton = document.querySelector('#handleButton');
+			var textField = document.querySelector('#textField');
+			var textButton = document.querySelector('#textButton');
+			
+			handleButton.addEventListener("click", getStreamForHandle, false);
+			textButton.addEventListener("click", getStreamForQuery, false);
+			
+			function getStreamForHandle(handle) {
+				var handle = document.querySelector('#handleField').value;
+				textHeader.innerHTML = "<h2>Top 10 retweets for @" + handle + "</h2>";
+				tweetArea.innerHTML = '';
+				socket.emit('handle', handle.toString());
+			}
+		
+			function getStreamForQuery(query) {
+				var query = document.querySelector('#textField').value;
+				textHeader.innerHTML = "<h2>Top 10 retweets for query " + query + "</h2>";
+				tweetArea.innerHTML = '';
+				socket.emit('filter', {track: query.toString()});
+			}
+			
+			socket.on('retweets', function (data) {
+				tweetArea.innerHTML = '';
+				for (var i = 0; i < data.length; i++) {
+					tweetArea.innerHTML += '<span>#' + ((data[i].rank < 10)? ' ' + data[i].rank : data[i].rank) + ': @' + data[i].handle + ': ' + data[i].text + ' with ' + data[i].retweets + ' retweets.</span>';
+					tweetArea.innerHTML += '<br />';
+				}
+		  	});
+			socket.on('id', function (data) {
+				socket.emit('filter', {follow: data});
+			});
+			socket.on('error', function(data){
+				tweetArea.innerHTML = '<span>' + data.message + '<span>';
+			});
+		  //socket.emit('handle', 'mashable');
+		  //socket.emit('filter', {track : 'twitter'});
+		</script>
+	</body>
 </html>
+
