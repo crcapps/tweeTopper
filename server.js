@@ -45,11 +45,6 @@ var port = 3000;
 
 server.listen(port);
 
-function packetize(data) {
-	
-	return packet;
-}
-
 function handler (req, res) {
   fs.readFile(__dirname + '/index.html',
   function (err, data) {
